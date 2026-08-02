@@ -1,0 +1,17 @@
+{
+  "expo": {
+    "name": "SpendSmartNew",
+    "slug": "spendsmartnew",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "android": {
+      "package": "com.mohit.spendsmartnew"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "c9a8cdc5-a04d-4a54-a7d1-a607f832b33c"
+      }
+    }
+  }
+}r
