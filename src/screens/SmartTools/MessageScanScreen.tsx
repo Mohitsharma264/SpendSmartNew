@@ -29,12 +29,12 @@ export default function MessageScanScreen() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
 
   const parseSmsBody = (body: string, id: string): Transaction | null => {
-    const isSpam = /win|won|congratulations|congrats|claim|lottery|reward|lucky|http|https|bit\.ly|tinyurl|click/i.test(body);
+    const isSpam = /win|won|congratulations|congrats|claim|lottery|reward|lucky/i.test(body);
     if (isSpam) {
       return null;
     }
 
-    const isTransaction = /debited|spent|paid|vpa|transferred/i.test(body);
+    const isTransaction = /debited|spent|paid|vpa|transferred|credited|received|sent|withdrawn|a\/c|bank|upi/i.test(body);
     if (!isTransaction) {
       return null;
     }
@@ -57,6 +57,7 @@ export default function MessageScanScreen() {
     else if (/flipkart/i.test(body)) merchant = 'Flipkart';
     else if (/paytm/i.test(body)) merchant = 'Paytm';
     else if (/phonepe/i.test(body)) merchant = 'PhonePe';
+    else if (/googlepay|gpay/i.test(body)) merchant = 'Google Pay';
 
     return {
       id,
@@ -80,7 +81,15 @@ export default function MessageScanScreen() {
       return;
     }
 
-    setTransactions((prev) => [parsed, ...prev]);
+    setTransactions((prev) => {
+      const exists = prev.some((t) => t.rawText === parsed.rawText);
+      if (exists) {
+        Alert.alert('Duplicate SMS', 'This transaction has already been added.');
+        return prev;
+      }
+      return [parsed, ...prev];
+    });
+
     setPastedText('');
     Alert.alert('Success', 'SMS parsed successfully!');
   };
@@ -109,7 +118,7 @@ export default function MessageScanScreen() {
 
         const filter = {
           box: 'inbox',
-          maxCount: 30,
+          maxCount: 100,
         };
 
         SmsAndroid.list(
@@ -121,20 +130,22 @@ export default function MessageScanScreen() {
           (count: number, smsList: string) => {
             try {
               const parsedList = JSON.parse(smsList);
-              const detected: Transaction[] = [];
+              const detectedMap = new Map<string, Transaction>();
 
               parsedList.forEach((item: any) => {
-                const parsed = parseSmsBody(item.body, item._id ? item._id.toString() : Math.random().toString());
-                if (parsed) {
-                  detected.push(parsed);
+                const msgId = item._id ? item._id.toString() : item.date ? item.date.toString() : Math.random().toString();
+                const parsed = parseSmsBody(item.body, msgId);
+                if (parsed && !detectedMap.has(msgId)) {
+                  detectedMap.set(msgId, parsed);
                 }
               });
 
+              const detected = Array.from(detectedMap.values());
               setTransactions(detected);
               setLoading(false);
 
               if (detected.length > 0) {
-                Alert.alert('Scan Complete', `Found ${detected.length} valid transaction messages!`);
+                Alert.alert('Scan Complete', `Found ${detected.length} unique transaction messages!`);
               } else {
                 Alert.alert('Scan Complete', 'No financial transaction SMS found in inbox.');
               }
