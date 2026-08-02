@@ -6,7 +6,11 @@
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
     "android": {
-      "package": "com.mohit.spendsmartnew"
+      "package": "com.mohit.spendsmartnew",
+      "permissions": [
+        "android.permission.READ_SMS",
+        "android.permission.RECEIVE_SMS"
+      ]
     },
     "extra": {
       "eas": {
@@ -14,4 +18,4 @@
       }
     }
   }
-}r
+}

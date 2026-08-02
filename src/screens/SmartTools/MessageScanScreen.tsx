@@ -5,13 +5,14 @@ import {
   StyleSheet,
   TouchableOpacity,
   TextInput,
-  FlatList,
   Alert,
   ActivityIndicator,
   PermissionsAndroid,
   Platform,
   ScrollView,
 } from 'react-native';
+// @ts-ignore
+import SmsAndroid from 'react-native-get-sms-android';
 import { Colors } from '../../constants/Colors';
 
 interface Transaction {
@@ -105,38 +106,52 @@ export default function MessageScanScreen() {
           Alert.alert('Permission Denied', 'Cannot scan SMS without permission.');
           return;
         }
+
+        const filter = {
+          box: 'inbox',
+          maxCount: 30,
+        };
+
+        SmsAndroid.list(
+          JSON.stringify(filter),
+          (fail: string) => {
+            setLoading(false);
+            Alert.alert('Error', 'Failed to fetch SMS messages from inbox.');
+          },
+          (count: number, smsList: string) => {
+            try {
+              const parsedList = JSON.parse(smsList);
+              const detected: Transaction[] = [];
+
+              parsedList.forEach((item: any) => {
+                const parsed = parseSmsBody(item.body, item._id ? item._id.toString() : Math.random().toString());
+                if (parsed) {
+                  detected.push(parsed);
+                }
+              });
+
+              setTransactions(detected);
+              setLoading(false);
+
+              if (detected.length > 0) {
+                Alert.alert('Scan Complete', `Found ${detected.length} valid transaction messages!`);
+              } else {
+                Alert.alert('Scan Complete', 'No financial transaction SMS found in inbox.');
+              }
+            } catch (err) {
+              setLoading(false);
+              Alert.alert('Error', 'Failed to parse device SMS data.');
+            }
+          }
+        );
       } catch (err) {
+        setLoading(false);
         console.warn(err);
       }
-    }
-
-    setTimeout(() => {
-      const mockBankMessages = [
-        'A/C X1234 debited by Rs. 450.00 on 30-Jul-26 info: SWIGGY. Ref: 482910.',
-        'Sent INR 1,200.00 to AMAZON via UPI. Txn ID: 98120391.',
-        'Paid Rs. 180.00 at ZOMATO using HDFC Bank Card ending 8812.',
-        'Congratulations! You won Rs 1000 cashback! Click http://fake-claim.com to receive.',
-        'Your OTP for login is 482910. Do not share with anyone.',
-        'Debited Rs. 350.00 from A/C 9901 to UBER India.',
-      ];
-
-      const detected: Transaction[] = [];
-      mockBankMessages.forEach((msg, index) => {
-        const parsed = parseSmsBody(msg, index.toString());
-        if (parsed) {
-          detected.push(parsed);
-        }
-      });
-
-      setTransactions(detected);
+    } else {
       setLoading(false);
-
-      if (detected.length > 0) {
-        Alert.alert('Scan Complete', `Found ${detected.length} valid transaction messages!`);
-      } else {
-        Alert.alert('Scan Complete', 'No financial transaction SMS found.');
-      }
-    }, 1500);
+      Alert.alert('Not Supported', 'Inbox SMS reading is only supported on Android devices.');
+    }
   };
 
   const handleSaveTransaction = (item: Transaction) => {

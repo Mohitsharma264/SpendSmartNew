@@ -4,8 +4,12 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const ENV_URL = process.env.EXPO_PUBLIC_API_URL;
 
+const formattedEnvUrl = ENV_URL
+  ? (ENV_URL.endsWith('/api') ? ENV_URL : `${ENV_URL}/api`)
+  : null;
+
 export const BASE_URL =
-  ENV_URL ||
+  formattedEnvUrl ||
   (Platform.OS === 'android'
     ? 'http://10.0.2.2:5000/api'
     : 'http://localhost:5000/api');

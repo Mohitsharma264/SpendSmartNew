@@ -35,7 +35,7 @@ export type RootStackParamList = {
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export const AppNavigator = () => {
-  const { userToken, isLoading } = useAuth() as any;
+  const { userToken, isLoading } = useAuth();
   const { theme, isDark } = useTheme();
 
   const customNavTheme = {

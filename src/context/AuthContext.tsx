@@ -1,4 +1,4 @@
-import React, { createContext, useState, useContext } from 'react';
+import React, { createContext, useState, useContext, useEffect } from 'react';
 import api, { API_ENDPOINTS } from '../services/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -7,6 +7,27 @@ export const AuthContext = createContext<any>(null);
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [userToken, setUserToken] = useState<string | null>(null);
   const [user, setUser] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+
+  useEffect(() => {
+    const loadStoredData = async () => {
+      try {
+        const token = await AsyncStorage.getItem('userToken');
+        const storedUser = await AsyncStorage.getItem('userData');
+        if (token) {
+          setUserToken(token);
+        }
+        if (storedUser) {
+          setUser(JSON.parse(storedUser));
+        }
+      } catch (error) {
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadStoredData();
+  }, []);
 
   const login = async (email: string, password: string) => {
     const response = await api.post(API_ENDPOINTS.LOGIN, { email, password });
@@ -39,7 +60,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, userToken, login, register, logout, updateUser }}>
+    <AuthContext.Provider value={{ user, userToken, isLoading, login, register, logout, updateUser }}>
       {children}
     </AuthContext.Provider>
   );

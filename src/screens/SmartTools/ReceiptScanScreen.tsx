@@ -10,6 +10,7 @@ import {
   ScrollView,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
+import api from '../../services/api';
 import { Colors } from '../../constants/Colors';
 
 export default function ReceiptScanScreen() {
@@ -41,22 +42,48 @@ export default function ReceiptScanScreen() {
     }
 
     if (!result.canceled && result.assets && result.assets.length > 0) {
-      setImageUri(result.assets[0].uri);
-      processReceipt();
+      const selectedUri = result.assets[0].uri;
+      setImageUri(selectedUri);
+      processReceipt(selectedUri);
     }
   };
 
-  const processReceipt = () => {
+  const processReceipt = async (uri: string) => {
     setProcessing(true);
     setExtractedData(null);
-    setTimeout(() => {
-      setProcessing(false);
-      setExtractedData({
-        amount: '₹450.00',
-        merchant: 'Starbucks Coffee',
-        date: new Date().toLocaleDateString(),
+
+    try {
+      const formData = new FormData();
+      const filename = uri.split('/').pop() || 'receipt.jpg';
+      const match = /\.(\w+)$/.exec(filename);
+      const type = match ? `image/${match[1]}` : 'image/jpeg';
+
+      formData.append('receipt', {
+        uri: uri,
+        name: filename,
+        type: type,
+      } as any);
+
+      const response = await api.post('/transactions/upload-receipt', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
       });
-    }, 1500);
+
+      if (response.data && response.data.receipt) {
+        setExtractedData(response.data.receipt);
+      } else if (response.data) {
+        setExtractedData({
+          merchant: response.data.merchant || 'Unknown Merchant',
+          amount: response.data.amount ? `₹${response.data.amount}` : '₹0.00',
+          date: response.data.date || new Date().toLocaleDateString(),
+        });
+      }
+    } catch (error: any) {
+      Alert.alert('Error', error.response?.data?.message || 'Failed to process receipt image.');
+    } finally {
+      setProcessing(false);
+    }
   };
 
   return (
