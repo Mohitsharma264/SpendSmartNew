@@ -17,12 +17,18 @@ const transporter = nodemailer.createTransport({
 router.post('/register', async (req, res) => {
   try {
     const { name, email, password } = req.body;
-    let user = await User.findOne({ email });
+    if (!name || !email || !password) {
+      return res.status(400).json({ message: 'All fields are required' });
+    }
+
+    const cleanEmail = email.trim().toLowerCase();
+    let user = await User.findOne({ email: cleanEmail });
     if (user) {
       return res.status(400).json({ message: 'User already exists' });
     }
+
     const hashedPassword = await bcrypt.hash(password, 10);
-    user = new User({ name, email, password: hashedPassword });
+    user = new User({ name: name.trim(), email: cleanEmail, password: hashedPassword });
     await user.save();
 
     const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '7d' });
@@ -35,10 +41,16 @@ router.post('/register', async (req, res) => {
 router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
-    const user = await User.findOne({ email });
+    if (!email || !password) {
+      return res.status(400).json({ message: 'Please enter both email and password' });
+    }
+
+    const cleanEmail = email.trim().toLowerCase();
+    const user = await User.findOne({ email: cleanEmail });
     if (!user) {
       return res.status(400).json({ message: 'Invalid credentials' });
     }
+
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
       return res.status(400).json({ message: 'Invalid credentials' });
@@ -127,16 +139,19 @@ router.put('/update-profile', async (req, res) => {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    if (email && email !== user.email) {
-      const existingUser = await User.findOne({ email });
-      if (existingUser) {
-        return res.status(400).json({ message: 'Email already in use' });
+    if (email) {
+      const cleanEmail = email.trim().toLowerCase();
+      if (cleanEmail !== user.email) {
+        const existingUser = await User.findOne({ email: cleanEmail });
+        if (existingUser) {
+          return res.status(400).json({ message: 'Email already in use' });
+        }
+        user.email = cleanEmail;
       }
-      user.email = email;
     }
 
     if (name) {
-      user.name = name;
+      user.name = name.trim();
     }
 
     await user.save();
@@ -153,7 +168,12 @@ router.put('/update-profile', async (req, res) => {
 router.post('/send-otp', async (req, res) => {
   try {
     const { email } = req.body;
-    const user = await User.findOne({ email });
+    if (!email) {
+      return res.status(400).json({ message: 'Email is required' });
+    }
+
+    const cleanEmail = email.trim().toLowerCase();
+    const user = await User.findOne({ email: cleanEmail });
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
@@ -167,7 +187,7 @@ router.post('/send-otp', async (req, res) => {
 
     transporter.sendMail({
       from: process.env.EMAIL_USER,
-      to: email,
+      to: cleanEmail,
       subject: 'SpendSmart - Password Reset OTP',
       text: `Your OTP for resetting your password is: ${otp}. It will expire in 10 minutes.`,
     }).catch(err => console.error(err));
@@ -182,8 +202,13 @@ router.post('/send-otp', async (req, res) => {
 router.post('/reset-password-otp', async (req, res) => {
   try {
     const { email, otp, newPassword } = req.body;
+    if (!email || !otp || !newPassword) {
+      return res.status(400).json({ message: 'All fields are required' });
+    }
+
+    const cleanEmail = email.trim().toLowerCase();
     const user = await User.findOne({
-      email,
+      email: cleanEmail,
       resetOtp: otp,
       resetOtpExpires: { $gt: Date.now() }
     });
