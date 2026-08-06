@@ -10,9 +10,7 @@ const formattedEnvUrl = ENV_URL
 
 export const BASE_URL =
   formattedEnvUrl ||
-  (Platform.OS === 'android'
-    ? 'http://10.0.2.2:5000/api'
-    : 'http://localhost:5000/api');
+  'https://spendsmart-app-test.loca.lt/api';
 
 export const API_ENDPOINTS = {
   LOGIN: `${BASE_URL}/auth/login`,
@@ -28,12 +26,13 @@ const api = axios.create({
   baseURL: BASE_URL,
   headers: {
     'Content-Type': 'application/json',
+    'bypass-tunnel-reminder': 'true',
   },
 });
 
 api.interceptors.request.use(
   async (config: InternalAxiosRequestConfig) => {
-    const token = await AsyncStorage.getItem('userToken');
+    const token = (await AsyncStorage.getItem('token')) || (await AsyncStorage.getItem('userToken'));
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;
     }
