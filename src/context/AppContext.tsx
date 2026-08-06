@@ -8,7 +8,7 @@ export interface Transaction {
   amount: number;
   type: 'income' | 'expense';
   category: string;
-  paymentMode: string;
+  paymentMode?: string;
   date: string;
 }
 
@@ -16,6 +16,7 @@ interface AppContextType {
   userName: string;
   setUserName: (name: string) => void;
   transactions: Transaction[];
+  setTransactions: React.Dispatch<React.SetStateAction<Transaction[]>>;
   addTransaction: (transaction: Omit<Transaction, 'id'>) => Promise<void>;
   deleteTransaction: (id: string) => Promise<void>;
   fetchTransactions: () => Promise<void>;
@@ -43,17 +44,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const fetchTransactions = async () => {
     try {
-      const token = await AsyncStorage.getItem('userToken');
+      const token = (await AsyncStorage.getItem('token')) || (await AsyncStorage.getItem('userToken'));
       if (!token) return;
 
       const response = await api.get('/transactions');
       const formatted = response.data.map((item: any) => ({
-        id: item._id,
+        id: item._id || item.id,
         title: item.title,
         amount: item.amount,
         type: item.type,
         category: item.category,
-        paymentMode: item.paymentMode,
+        paymentMode: item.paymentMode || 'General',
         date: item.date,
       }));
       setTransactions(formatted);
@@ -73,12 +74,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     try {
       const response = await api.post('/transactions', transactionData);
       const newTx: Transaction = {
-        id: response.data._id,
+        id: response.data._id || response.data.id,
         title: response.data.title,
         amount: response.data.amount,
         type: response.data.type,
         category: response.data.category,
-        paymentMode: response.data.paymentMode,
+        paymentMode: response.data.paymentMode || 'General',
         date: response.data.date,
       };
       setTransactions((prev) => [newTx, ...prev]);
@@ -102,6 +103,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         userName,
         setUserName: updateUserName,
         transactions,
+        setTransactions,
         addTransaction,
         deleteTransaction,
         fetchTransactions,

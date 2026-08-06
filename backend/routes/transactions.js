@@ -17,7 +17,8 @@ const authenticateToken = (req, res, next) => {
 
 router.get('/', authenticateToken, async (req, res) => {
   try {
-    const transactions = await Transaction.find({ user: req.user.id }).sort({ date: -1 });
+    const userId = req.user.id || req.user.userId || req.user._id;
+    const transactions = await Transaction.find({ user: userId }).sort({ date: -1 });
     res.json(transactions);
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
@@ -26,13 +27,15 @@ router.get('/', authenticateToken, async (req, res) => {
 
 router.post('/', authenticateToken, async (req, res) => {
   try {
-    const { title, amount, type, category, date, isAutoParsed, merchant } = req.body;
+    const userId = req.user.id || req.user.userId || req.user._id;
+    const { title, amount, type, category, date, isAutoParsed, merchant, paymentMode } = req.body;
     const transaction = new Transaction({
-      user: req.user.id,
+      user: userId,
       title,
       amount,
       type,
       category,
+      paymentMode: paymentMode || 'General',
       date: date || Date.now(),
       isAutoParsed: isAutoParsed || false,
       merchant,
@@ -46,9 +49,10 @@ router.post('/', authenticateToken, async (req, res) => {
 
 router.delete('/:id', authenticateToken, async (req, res) => {
   try {
+    const userId = req.user.id || req.user.userId || req.user._id;
     const transaction = await Transaction.findOneAndDelete({
       _id: req.params.id,
-      user: req.user.id,
+      user: userId,
     });
     if (!transaction) {
       return res.status(404).json({ message: 'Transaction not found' });

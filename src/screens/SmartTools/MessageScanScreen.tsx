@@ -11,14 +11,19 @@ import {
   Platform,
   ScrollView,
 } from 'react-native';
-// @ts-ignore
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import SmsAndroid from 'react-native-get-sms-android';
 import { Colors } from '../../constants/Colors';
+import { useApp } from '../../context/AppContext';
+
+const API_URL = 'https://spendsmart-app-test.loca.lt/api';
 
 interface Transaction {
   id: string;
   merchant: string;
   amount: string;
+  numericAmount: number;
+  type: 'income' | 'expense';
   date: string;
   rawText: string;
 }
@@ -27,6 +32,7 @@ export default function MessageScanScreen() {
   const [loading, setLoading] = useState(false);
   const [pastedText, setPastedText] = useState('');
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const { addTransaction } = useApp() as any;
 
   const parseSmsBody = (body: string, id: string): Transaction | null => {
     const isSpam = /win|won|congratulations|congrats|claim|lottery|reward|lucky/i.test(body);
@@ -47,9 +53,14 @@ export default function MessageScanScreen() {
       return null;
     }
 
+    const cleanAmountStr = amountMatch[1].replace(/,/g, '');
+    const numericAmount = parseFloat(cleanAmountStr);
     const amount = `₹${amountMatch[1]}`;
 
-    let merchant = 'General Expense';
+    const isIncome = /credited|received/i.test(body);
+    const type: 'income' | 'expense' = isIncome ? 'income' : 'expense';
+
+    let merchant = isIncome ? 'Income Source' : 'General Expense';
     if (/swiggy/i.test(body)) merchant = 'Swiggy';
     else if (/zomato/i.test(body)) merchant = 'Zomato';
     else if (/amazon/i.test(body)) merchant = 'Amazon';
@@ -63,6 +74,8 @@ export default function MessageScanScreen() {
       id,
       merchant,
       amount,
+      numericAmount,
+      type,
       date: new Date().toLocaleDateString(),
       rawText: body,
     };
@@ -165,9 +178,38 @@ export default function MessageScanScreen() {
     }
   };
 
-  const handleSaveTransaction = (item: Transaction) => {
-    Alert.alert('Saved', `Expense of ${item.amount} at ${item.merchant} logged successfully!`);
-    setTransactions((prev) => prev.filter((t) => t.id !== item.id));
+  const handleSaveTransaction = async (item: Transaction) => {
+    try {
+      const token = await AsyncStorage.getItem('token');
+      const payload = {
+        title: item.merchant,
+        amount: item.numericAmount,
+        type: item.type,
+        category: item.type === 'income' ? 'Income' : 'General',
+        date: new Date().toISOString(),
+      };
+
+      const response = await fetch(`${API_URL}/transactions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (response.ok) {
+        if (addTransaction) {
+          addTransaction(payload);
+        }
+        Alert.alert('Saved', `${item.type === 'income' ? 'Income' : 'Expense'} logged successfully!`);
+        setTransactions((prev) => prev.filter((t) => t.id !== item.id));
+      } else {
+        Alert.alert('Error', 'Failed to save transaction to backend server.');
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Network error while attempting to save transaction.');
+    }
   };
 
   return (
@@ -217,7 +259,9 @@ export default function MessageScanScreen() {
             <View key={item.id} style={styles.card}>
               <View style={styles.cardHeader}>
                 <Text style={styles.merchant}>{item.merchant}</Text>
-                <Text style={styles.amount}>{item.amount}</Text>
+                <Text style={[styles.amount, { color: item.type === 'income' ? '#10B981' : '#EF4444' }]}>
+                  {item.type === 'income' ? '+' : '-'}{item.amount}
+                </Text>
               </View>
               <Text style={styles.rawText} numberOfLines={2}>
                 {item.rawText}
@@ -225,10 +269,12 @@ export default function MessageScanScreen() {
               <View style={styles.cardFooter}>
                 <Text style={styles.date}>{item.date}</Text>
                 <TouchableOpacity
-                  style={styles.saveBtn}
+                  style={[styles.saveBtn, { backgroundColor: item.type === 'income' ? '#10B981' : '#3B82F6' }]}
                   onPress={() => handleSaveTransaction(item)}
                 >
-                  <Text style={styles.saveBtnText}>Save Expense</Text>
+                  <Text style={styles.saveBtnText}>
+                    Save {item.type === 'income' ? 'Income' : 'Expense'}
+                  </Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -302,10 +348,10 @@ const styles = StyleSheet.create({
   },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 },
   merchant: { fontSize: 16, fontWeight: '800', color: '#0F172A' },
-  amount: { fontSize: 16, fontWeight: '800', color: '#EF4444' },
+  amount: { fontSize: 16, fontWeight: '800' },
   rawText: { fontSize: 12, color: '#64748B', marginBottom: 12, lineHeight: 16 },
   cardFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   date: { fontSize: 12, color: '#94A3B8' },
-  saveBtn: { backgroundColor: '#10B981', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 8 },
+  saveBtn: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 8 },
   saveBtnText: { color: '#FFFFFF', fontWeight: '700', fontSize: 13 },
 });

@@ -1,4 +1,4 @@
-import React, { useState, useContext } from 'react';
+import React, { useState, useContext, useEffect } from 'react';
 import {
   SafeAreaView,
   View,
@@ -10,16 +10,50 @@ import {
   StatusBar,
   Alert,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useApp } from '../../context/AppContext';
 import { AuthContext } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import AddTransactionModal from '../../components/AddTransactionModal';
 
+const API_URL = 'https://spendsmart-app-test.loca.lt/api';
+
 export const HomeScreen = ({ navigation }: any) => {
-  const { userName, transactions, deleteTransaction } = useApp();
-  const { user } = useContext(AuthContext);
+  const { userName, transactions, deleteTransaction, setTransactions } = useApp() as any;
+  const { user, setUser } = useContext(AuthContext) as any;
   const { theme, isDark } = useTheme();
   const [isModalVisible, setIsModalVisible] = useState(false);
+
+  useEffect(() => {
+    const fetchInitialData = async () => {
+      try {
+        const token = await AsyncStorage.getItem('token');
+        if (!token) return;
+
+        const response = await fetch(`${API_URL}/auth/initial-data`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          if (data.user && setUser) {
+            setUser(data.user);
+          }
+          if (data.transactions && setTransactions) {
+            setTransactions(data.transactions);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching initial data:', error);
+      }
+    };
+
+    fetchInitialData();
+  }, []);
 
   const displayName = user?.name || userName || 'User';
 
@@ -147,10 +181,10 @@ const styles = StyleSheet.create({
   scrollContent: { padding: 20, paddingBottom: 90 },
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 20,
-    marginTop: 8,
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  marginBottom: 20,
+  marginTop: 8,
   },
   greetingText: { fontSize: 13 },
   userName: { fontSize: 22, fontWeight: '800' },

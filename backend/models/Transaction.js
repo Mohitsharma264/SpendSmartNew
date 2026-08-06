@@ -5,10 +5,12 @@ const transactionSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     required: true,
+    index: true,
   },
   title: {
     type: String,
     required: true,
+    default: 'Transaction',
   },
   amount: {
     type: Number,
@@ -35,5 +37,7 @@ const transactionSchema = new mongoose.Schema({
     type: String,
   },
 }, { timestamps: true });
+
+transactionSchema.index({ user: 1, date: -1 });
 
 module.exports = mongoose.model('Transaction', transactionSchema);

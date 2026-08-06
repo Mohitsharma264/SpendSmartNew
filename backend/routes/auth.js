@@ -4,6 +4,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const nodemailer = require('nodemailer');
 const User = require('../models/User');
+const Transaction = require('../models/Transaction');
 
 const transporter = nodemailer.createTransport({
   service: 'gmail',
@@ -47,6 +48,35 @@ router.post('/login', async (req, res) => {
     res.json({ token, user: { id: user._id, name: user.name, email: user.email } });
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
+  }
+});
+
+router.get('/initial-data', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) {
+      return res.status(401).json({ message: 'Authorization header missing' });
+    }
+
+    const token = authHeader.split(' ')[1];
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const userId = decoded.id;
+
+    const [user, transactions] = await Promise.all([
+      User.findById(userId).select('-password'),
+      Transaction.find({ user: userId }).sort({ date: -1 })
+    ]);
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    res.json({
+      user,
+      transactions
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error fetching initial data' });
   }
 });
 
@@ -133,16 +163,19 @@ router.post('/send-otp', async (req, res) => {
     user.resetOtpExpires = Date.now() + 10 * 60 * 1000;
     await user.save();
 
-    await transporter.sendMail({
+    res.json({ message: 'OTP sent to email successfully' });
+
+    transporter.sendMail({
       from: process.env.EMAIL_USER,
       to: email,
       subject: 'SpendSmart - Password Reset OTP',
       text: `Your OTP for resetting your password is: ${otp}. It will expire in 10 minutes.`,
-    });
+    }).catch(err => console.error(err));
 
-    res.json({ message: 'OTP sent to email successfully' });
   } catch (error) {
-    res.status(500).json({ message: 'Failed to send OTP email' });
+    if (!res.headersSent) {
+      res.status(500).json({ message: 'Failed to send OTP email' });
+    }
   }
 });
 
