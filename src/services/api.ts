@@ -1,4 +1,3 @@
-import { Platform } from 'react-native';
 import axios, { InternalAxiosRequestConfig } from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -19,14 +18,16 @@ export const API_ENDPOINTS = {
   CHANGE_PASSWORD: `${BASE_URL}/auth/change-password`,
   FORGOT_PASSWORD: `${BASE_URL}/auth/send-otp`,
   RESET_PASSWORD: `${BASE_URL}/auth/reset-password-otp`,
+  INITIAL_DATA: `${BASE_URL}/auth/initial-data`,
   TRANSACTIONS: `${BASE_URL}/transactions`,
+  UPLOAD_RECEIPT: `${BASE_URL}/transactions/upload-receipt`,
 };
 
 const api = axios.create({
   baseURL: BASE_URL,
   headers: {
     'Content-Type': 'application/json',
-    'bypass-tunnel-reminder': 'true',
+    'Bypass-Tunnel-Reminder': 'true',
   },
 });
 
@@ -35,6 +36,9 @@ api.interceptors.request.use(
     const token = (await AsyncStorage.getItem('token')) || (await AsyncStorage.getItem('userToken'));
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;
+    }
+    if (config.headers) {
+      config.headers['Bypass-Tunnel-Reminder'] = 'true';
     }
     return config;
   },

@@ -12,7 +12,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     const loadStoredData = async () => {
       try {
-        const token = await AsyncStorage.getItem('userToken');
+        const token = (await AsyncStorage.getItem('userToken')) || (await AsyncStorage.getItem('token'));
         const storedUser = await AsyncStorage.getItem('userData');
         if (token) {
           setUserToken(token);
@@ -21,6 +21,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           setUser(JSON.parse(storedUser));
         }
       } catch (error) {
+        console.error(error);
       } finally {
         setIsLoading(false);
       }
@@ -33,6 +34,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const response = await api.post(API_ENDPOINTS.LOGIN, { email, password });
     const { token, user: userData } = response.data;
     await AsyncStorage.setItem('userToken', token);
+    await AsyncStorage.setItem('token', token);
     await AsyncStorage.setItem('userData', JSON.stringify(userData));
     setUserToken(token);
     setUser(userData);
@@ -42,6 +44,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const response = await api.post(API_ENDPOINTS.REGISTER, { name, email, password });
     const { token, user: userData } = response.data;
     await AsyncStorage.setItem('userToken', token);
+    await AsyncStorage.setItem('token', token);
     await AsyncStorage.setItem('userData', JSON.stringify(userData));
     setUserToken(token);
     setUser(userData);
@@ -54,6 +57,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const logout = async () => {
     await AsyncStorage.removeItem('userToken');
+    await AsyncStorage.removeItem('token');
     await AsyncStorage.removeItem('userData');
     setUserToken(null);
     setUser(null);

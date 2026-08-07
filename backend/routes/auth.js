@@ -14,6 +14,21 @@ const transporter = nodemailer.createTransport({
   },
 });
 
+const verifyTokenHeader = (req, res) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader) {
+    res.status(401).json({ message: 'Authorization header missing' });
+    return null;
+  }
+  const token = authHeader.split(' ')[1];
+  try {
+    return jwt.verify(token, process.env.JWT_SECRET);
+  } catch (err) {
+    res.status(401).json({ message: 'Invalid or expired token' });
+    return null;
+  }
+};
+
 router.post('/register', async (req, res) => {
   try {
     const { name, email, password } = req.body;
@@ -65,15 +80,10 @@ router.post('/login', async (req, res) => {
 
 router.get('/initial-data', async (req, res) => {
   try {
-    const authHeader = req.headers.authorization;
-    if (!authHeader) {
-      return res.status(401).json({ message: 'Authorization header missing' });
-    }
+    const decoded = verifyTokenHeader(req, res);
+    if (!decoded) return;
 
-    const token = authHeader.split(' ')[1];
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
     const userId = decoded.id;
-
     const [user, transactions] = await Promise.all([
       User.findById(userId).select('-password'),
       Transaction.find({ user: userId }).sort({ date: -1 })
@@ -88,22 +98,19 @@ router.get('/initial-data', async (req, res) => {
       transactions
     });
   } catch (error) {
-    res.status(500).json({ message: 'Server error fetching initial data' });
+    if (!res.headersSent) {
+      res.status(500).json({ message: 'Server error fetching initial data' });
+    }
   }
 });
 
 router.post('/change-password', async (req, res) => {
   try {
     const { currentPassword, newPassword } = req.body;
-    const authHeader = req.headers.authorization;
-    if (!authHeader) {
-      return res.status(401).json({ message: 'Authorization header missing' });
-    }
+    const decoded = verifyTokenHeader(req, res);
+    if (!decoded) return;
 
-    const token = authHeader.split(' ')[1];
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
     const user = await User.findById(decoded.id);
-
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
@@ -119,22 +126,19 @@ router.post('/change-password', async (req, res) => {
 
     res.json({ message: 'Password changed successfully' });
   } catch (error) {
-    res.status(500).json({ message: 'Server error' });
+    if (!res.headersSent) {
+      res.status(500).json({ message: 'Server error' });
+    }
   }
 });
 
 router.put('/update-profile', async (req, res) => {
   try {
     const { name, email } = req.body;
-    const authHeader = req.headers.authorization;
-    if (!authHeader) {
-      return res.status(401).json({ message: 'Authorization header missing' });
-    }
+    const decoded = verifyTokenHeader(req, res);
+    if (!decoded) return;
 
-    const token = authHeader.split(' ')[1];
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
     const user = await User.findById(decoded.id);
-
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
@@ -161,7 +165,9 @@ router.put('/update-profile', async (req, res) => {
       user: { id: user._id, name: user.name, email: user.email },
     });
   } catch (error) {
-    res.status(500).json({ message: 'Server error' });
+    if (!res.headersSent) {
+      res.status(500).json({ message: 'Server error' });
+    }
   }
 });
 

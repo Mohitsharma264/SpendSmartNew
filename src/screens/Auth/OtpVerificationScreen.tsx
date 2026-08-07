@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -17,6 +17,7 @@ export default function OtpVerificationScreen({ route, navigation }: any) {
   const [newPassword, setNewPassword] = useState('');
   const [timer, setTimer] = useState(30);
   const [loading, setLoading] = useState(false);
+  const inputRefs = useRef<Array<TextInput | null>>([]);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -26,18 +27,36 @@ export default function OtpVerificationScreen({ route, navigation }: any) {
   }, []);
 
   const handleChange = (text: string, index: number) => {
+    const cleanText = text.replace(/[^0-9]/g, '');
     const newOtp = [...otp];
-    newOtp[index] = text;
+    newOtp[index] = cleanText;
     setOtp(newOtp);
+
+    if (cleanText && index < 5) {
+      inputRefs.current[index + 1]?.focus();
+    }
+  };
+
+  const handleKeyPress = (e: any, index: number) => {
+    if (e.nativeEvent.key === 'Backspace' && !otp[index] && index > 0) {
+      inputRefs.current[index - 1]?.focus();
+    }
+  };
+
+  const handlePasswordChange = (text: string) => {
+    const noSpaces = text.replace(/\s/g, '');
+    setNewPassword(noSpaces);
   };
 
   const handleVerify = async () => {
     const enteredOtp = otp.join('');
+    const cleanPassword = newPassword.replace(/\s/g, '');
+
     if (enteredOtp.length < 6) {
       Alert.alert('Error', 'Please enter complete 6-digit OTP.');
       return;
     }
-    if (!newPassword) {
+    if (!cleanPassword) {
       Alert.alert('Error', 'Please enter a new password.');
       return;
     }
@@ -46,7 +65,7 @@ export default function OtpVerificationScreen({ route, navigation }: any) {
       await api.post(API_ENDPOINTS.RESET_PASSWORD, {
         email,
         otp: enteredOtp,
-        newPassword,
+        newPassword: cleanPassword,
       });
       Alert.alert('Success', 'Password reset successfully! Please log in.');
       navigation.navigate('Login');
@@ -79,11 +98,13 @@ export default function OtpVerificationScreen({ route, navigation }: any) {
           {otp.map((digit, index) => (
             <TextInput
               key={index}
+              ref={(ref) => (inputRefs.current[index] = ref)}
               style={styles.otpInput}
               keyboardType="number-pad"
               maxLength={1}
               value={digit}
               onChangeText={(text) => handleChange(text, index)}
+              onKeyPress={(e) => handleKeyPress(e, index)}
             />
           ))}
         </View>
@@ -95,8 +116,10 @@ export default function OtpVerificationScreen({ route, navigation }: any) {
             placeholder="••••••••"
             placeholderTextColor="#94A3B8"
             secureTextEntry
+            autoCapitalize="none"
+            autoCorrect={false}
             value={newPassword}
-            onChangeText={setNewPassword}
+            onChangeText={handlePasswordChange}
           />
         </View>
 

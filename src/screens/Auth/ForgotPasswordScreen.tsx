@@ -19,15 +19,17 @@ export default function ForgotPasswordScreen({ navigation }: any) {
   const [loading, setLoading] = useState(false);
 
   const handleSendOtp = async () => {
-    if (!email) {
+    const cleanEmail = email.trim().toLowerCase();
+
+    if (!cleanEmail) {
       Alert.alert('Error', 'Please enter your registered email address.');
       return;
     }
     setLoading(true);
     try {
-      await api.post(API_ENDPOINTS.FORGOT_PASSWORD, { email });
+      await api.post(API_ENDPOINTS.FORGOT_PASSWORD, { email: cleanEmail });
       Alert.alert('Code Sent', 'A 6-digit OTP code has been sent to your email.');
-      navigation.navigate('OtpVerification', { email });
+      navigation.navigate('OtpVerification', { email: cleanEmail });
     } catch (err: any) {
       Alert.alert('Error', err?.response?.data?.message || 'Failed to send OTP.');
     } finally {
@@ -68,6 +70,7 @@ export default function ForgotPasswordScreen({ navigation }: any) {
                 placeholderTextColor="#94A3B8"
                 keyboardType="email-address"
                 autoCapitalize="none"
+                autoCorrect={false}
                 value={email}
                 onChangeText={setEmail}
               />

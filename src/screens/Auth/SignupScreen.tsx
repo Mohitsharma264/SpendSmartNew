@@ -21,14 +21,28 @@ export default function SignupScreen({ navigation }: any) {
   const [loading, setLoading] = useState(false);
   const { register } = useAuth();
 
+  const handleNameChange = (text: string) => {
+    const alphabetsOnly = text.replace(/[^a-zA-Z\s]/g, '');
+    setName(alphabetsOnly);
+  };
+
+  const handlePasswordChange = (text: string) => {
+    const noSpaces = text.replace(/\s/g, '');
+    setPassword(noSpaces);
+  };
+
   const handleSignup = async () => {
-    if (!name || !email || !password) {
+    const cleanName = name.trim();
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanPassword = password.replace(/\s/g, '');
+
+    if (!cleanName || !cleanEmail || !cleanPassword) {
       Alert.alert('Error', 'Please fill in all fields.');
       return;
     }
     setLoading(true);
     try {
-      await register(name, email, password);
+      await register(cleanName, cleanEmail, cleanPassword);
     } catch (err: any) {
       Alert.alert('Registration Failed', err?.response?.data?.message || err?.message || 'Could not register.');
     } finally {
@@ -59,8 +73,9 @@ export default function SignupScreen({ navigation }: any) {
                 style={styles.input}
                 placeholder="John Doe"
                 placeholderTextColor="#94A3B8"
+                autoCorrect={false}
                 value={name}
-                onChangeText={setName}
+                onChangeText={handleNameChange}
               />
             </View>
 
@@ -72,6 +87,7 @@ export default function SignupScreen({ navigation }: any) {
                 placeholderTextColor="#94A3B8"
                 keyboardType="email-address"
                 autoCapitalize="none"
+                autoCorrect={false}
                 value={email}
                 onChangeText={setEmail}
               />
@@ -84,8 +100,10 @@ export default function SignupScreen({ navigation }: any) {
                 placeholder="••••••••"
                 placeholderTextColor="#94A3B8"
                 secureTextEntry
+                autoCapitalize="none"
+                autoCorrect={false}
                 value={password}
-                onChangeText={setPassword}
+                onChangeText={handlePasswordChange}
               />
             </View>
 

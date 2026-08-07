@@ -20,14 +20,22 @@ export default function LoginScreen({ navigation }: any) {
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
 
+  const handlePasswordChange = (text: string) => {
+    const noSpaces = text.replace(/\s/g, '');
+    setPassword(noSpaces);
+  };
+
   const handleLogin = async () => {
-    if (!email || !password) {
+    const cleanEmail = email.trim();
+    const cleanPassword = password.replace(/\s/g, '');
+
+    if (!cleanEmail || !cleanPassword) {
       Alert.alert('Error', 'Please fill in all fields.');
       return;
     }
     setLoading(true);
     try {
-      await login(email, password);
+      await login(cleanEmail, cleanPassword);
     } catch (err: any) {
       Alert.alert('Login Failed', err?.response?.data?.message || err?.message || 'Invalid credentials.');
     } finally {
@@ -60,6 +68,7 @@ export default function LoginScreen({ navigation }: any) {
                 placeholderTextColor="#94A3B8"
                 keyboardType="email-address"
                 autoCapitalize="none"
+                autoCorrect={false}
                 value={email}
                 onChangeText={setEmail}
               />
@@ -72,8 +81,10 @@ export default function LoginScreen({ navigation }: any) {
                 placeholder="••••••••"
                 placeholderTextColor="#94A3B8"
                 secureTextEntry
+                autoCapitalize="none"
+                autoCorrect={false}
                 value={password}
-                onChangeText={setPassword}
+                onChangeText={handlePasswordChange}
               />
             </View>
 

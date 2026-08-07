@@ -23,7 +23,7 @@ export const AddTransactionModal: React.FC<Props> = ({ visible, onClose }) => {
   const [type, setType] = useState<'income' | 'expense'>('expense');
   const [category, setCategory] = useState('Food');
 
-  const categories = ['Food', 'Shopping', 'Bills', 'Fuel', 'Salary', 'Other'];
+  const categories = ['Food', 'Shopping', 'Bills', 'Fuel', 'Salary', 'Education', 'Other'];
 
   const handleSubmit = () => {
     if (!title.trim() || !amount.trim()) {
@@ -38,14 +38,11 @@ export const AddTransactionModal: React.FC<Props> = ({ visible, onClose }) => {
     }
 
     addTransaction({
-      title,
+      title: title.trim(),
       amount: parsedAmount,
       type,
       category,
-      date: new Date().toLocaleDateString('en-IN', {
-        day: 'numeric',
-        month: 'short',
-      }),
+      date: new Date().toISOString(),
     });
 
     setTitle('');

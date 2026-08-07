@@ -1,7 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const jwt = require('jsonwebtoken');
+const multer = require('multer');
 const Transaction = require('../models/Transaction');
+
+const upload = multer({ storage: multer.memoryStorage() });
 
 const authenticateToken = (req, res, next) => {
   const authHeader = req.headers['authorization'];
@@ -44,6 +47,24 @@ router.post('/', authenticateToken, async (req, res) => {
     res.status(201).json(transaction);
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
+  }
+});
+
+router.post('/upload-receipt', authenticateToken, upload.single('receipt'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ message: 'No receipt image uploaded' });
+    }
+
+    const extractedData = {
+      merchant: 'General Merchant',
+      amount: 0,
+      date: new Date().toLocaleDateString(),
+    };
+
+    res.json({ receipt: extractedData });
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to process receipt image' });
   }
 });
 

@@ -25,6 +25,10 @@ const transactionSchema = new mongoose.Schema({
     type: String,
     default: 'General',
   },
+  paymentMode: {
+    type: String,
+    default: 'General',
+  },
   date: {
     type: Date,
     default: Date.now,

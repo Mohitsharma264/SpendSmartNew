@@ -15,8 +15,7 @@ import { useApp } from '../../context/AppContext';
 import { AuthContext } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import AddTransactionModal from '../../components/AddTransactionModal';
-
-const API_URL = 'https://spendsmart-app-test.loca.lt/api';
+import api, { API_ENDPOINTS } from '../../services/api';
 
 export const HomeScreen = ({ navigation }: any) => {
   const { userName, transactions, deleteTransaction, setTransactions } = useApp() as any;
@@ -27,24 +26,13 @@ export const HomeScreen = ({ navigation }: any) => {
   useEffect(() => {
     const fetchInitialData = async () => {
       try {
-        const token = await AsyncStorage.getItem('token');
-        if (!token) return;
-
-        const response = await fetch(`${API_URL}/auth/initial-data`, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-        });
-
-        const data = await response.json();
-
-        if (response.ok) {
-          if (data.user && setUser) {
-            setUser(data.user);
+        const response = await api.get(API_ENDPOINTS.INITIAL_DATA);
+        if (response.data) {
+          if (response.data.user && setUser) {
+            setUser(response.data.user);
           }
-          if (data.transactions && setTransactions) {
-            setTransactions(data.transactions);
+          if (response.data.transactions && setTransactions) {
+            setTransactions(response.data.transactions);
           }
         }
       } catch (error) {
@@ -181,10 +169,10 @@ const styles = StyleSheet.create({
   scrollContent: { padding: 20, paddingBottom: 90 },
   header: {
     flexDirection: 'row',
-  justifyContent: 'space-between',
-  alignItems: 'center',
-  marginBottom: 20,
-  marginTop: 8,
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+    marginTop: 8,
   },
   greetingText: { fontSize: 13 },
   userName: { fontSize: 22, fontWeight: '800' },

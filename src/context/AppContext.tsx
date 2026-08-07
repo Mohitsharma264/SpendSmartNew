@@ -17,9 +17,10 @@ interface AppContextType {
   setUserName: (name: string) => void;
   transactions: Transaction[];
   setTransactions: React.Dispatch<React.SetStateAction<Transaction[]>>;
-  addTransaction: (transaction: Omit<Transaction, 'id'>) => Promise<void>;
+  addTransaction: (transaction: Omit<Transaction, 'id'> | Transaction) => Promise<void>;
   deleteTransaction: (id: string) => Promise<void>;
   fetchTransactions: () => Promise<void>;
+  clearAppData: () => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -70,17 +71,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     await AsyncStorage.setItem('@user_name', name);
   };
 
-  const addTransaction = async (transactionData: Omit<Transaction, 'id'>) => {
+  const clearAppData = () => {
+    setTransactions([]);
+    setUserName('User');
+  };
+
+  const addTransaction = async (transactionData: Omit<Transaction, 'id'> | Transaction) => {
     try {
+      if ('id' in transactionData && transactionData.id) {
+        setTransactions((prev) => [transactionData as Transaction, ...prev]);
+        return;
+      }
+
       const response = await api.post('/transactions', transactionData);
       const newTx: Transaction = {
-        id: response.data._id || response.data.id,
-        title: response.data.title,
-        amount: response.data.amount,
-        type: response.data.type,
-        category: response.data.category,
+        id: response.data._id || response.data.id || Date.now().toString(),
+        title: response.data.title || (transactionData as any).title,
+        amount: response.data.amount || (transactionData as any).amount,
+        type: response.data.type || (transactionData as any).type,
+        category: response.data.category || (transactionData as any).category,
         paymentMode: response.data.paymentMode || 'General',
-        date: response.data.date,
+        date: response.data.date || new Date().toISOString(),
       };
       setTransactions((prev) => [newTx, ...prev]);
     } catch (e) {
@@ -107,6 +118,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         addTransaction,
         deleteTransaction,
         fetchTransactions,
+        clearAppData,
       }}
     >
       {children}

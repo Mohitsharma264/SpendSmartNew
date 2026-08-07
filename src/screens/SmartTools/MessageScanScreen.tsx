@@ -46,7 +46,7 @@ export default function MessageScanScreen() {
     }
 
     const amountMatch =
-      body.match(/(?:RS|INR|₹)\s?([\d,]+(?:\.\d+)?)/i) ||
+      body.match(/(?:RS|INR|₹)\.?\s?([\d,]+(?:\.\d+)?)/i) ||
       body.match(/([\d,]+(?:\.\d+)?)\s?(?:RS|INR|₹)/i);
 
     if (!amountMatch) {
@@ -55,8 +55,11 @@ export default function MessageScanScreen() {
 
     const cleanAmountStr = amountMatch[1].replace(/,/g, '');
     const numericAmount = parseFloat(cleanAmountStr);
-    const amount = `₹${amountMatch[1]}`;
+    if (isNaN(numericAmount) || numericAmount <= 0) {
+      return null;
+    }
 
+    const amount = `₹${amountMatch[1]}`;
     const isIncome = /credited|received/i.test(body);
     const type: 'income' | 'expense' = isIncome ? 'income' : 'expense';
 
@@ -69,6 +72,12 @@ export default function MessageScanScreen() {
     else if (/paytm/i.test(body)) merchant = 'Paytm';
     else if (/phonepe/i.test(body)) merchant = 'PhonePe';
     else if (/googlepay|gpay/i.test(body)) merchant = 'Google Pay';
+    else {
+      const merchantMatch = body.match(/(?:at|to|vpa|info:)\s+([A-Za-z0-9\s._-]+?)(?=\s+on|\s+ref|\s+upi|\.|\s*$)/i);
+      if (merchantMatch && merchantMatch[1].trim().length > 2) {
+        merchant = merchantMatch[1].trim();
+      }
+    }
 
     return {
       id,
@@ -193,19 +202,22 @@ export default function MessageScanScreen() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Bypass-Tunnel-Reminder': 'true',
           'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify(payload),
       });
 
+      const resData = await response.json();
+
       if (response.ok) {
         if (addTransaction) {
-          addTransaction(payload);
+          addTransaction(resData.transaction || resData || payload);
         }
         Alert.alert('Saved', `${item.type === 'income' ? 'Income' : 'Expense'} logged successfully!`);
         setTransactions((prev) => prev.filter((t) => t.id !== item.id));
       } else {
-        Alert.alert('Error', 'Failed to save transaction to backend server.');
+        Alert.alert('Error', resData.message || 'Failed to save transaction to backend server.');
       }
     } catch (error) {
       Alert.alert('Error', 'Network error while attempting to save transaction.');
